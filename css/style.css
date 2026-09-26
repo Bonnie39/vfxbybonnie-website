@@ -1,0 +1,513 @@
+/* ==========================================================================
+   Tokens
+   ========================================================================== */
+
+:root {
+  /* Palette: ink, bone, one violet accent, plus a warm ash neutral */
+  --ink: #0b0b0a;
+  --bone: #ece8e0;
+  --violet: #8c6cff;
+  --ash: #7a766f;
+  --rule: rgba(236, 232, 224, 0.14);
+  --mark: rgba(236, 232, 224, 0.4);
+
+  /* Type families */
+  --serif: "Instrument Serif", "Times New Roman", serif;
+  --sans: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Type scale: perfect fourth (1.333), plus one fluid display size */
+  --fs-0: 0.75rem;     /* 12px — mono labels, metadata */
+  --fs-1: 1rem;        /* 16px — body */
+  --fs-2: 1.333rem;    /* 21px */
+  --fs-3: 1.777rem;    /* 28px */
+  --fs-4: 2.369rem;    /* 38px — index entries */
+  --fs-5: 3.157rem;    /* 51px */
+  --fs-6: 4.209rem;    /* 67px — title lead-in */
+  --fs-display: clamp(5.5rem, 21vw, 15rem);
+
+  /* Spacing & motion */
+  --gutter: clamp(1rem, 3vw, 2.5rem);
+  --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
+  --dur: 0.45s;
+
+  /* Monochrome film grain */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--ink);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: clamp(2.5rem, 6vh, 4.5rem);
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: var(--gutter);
+  padding-left: max(var(--gutter), env(safe-area-inset-left));
+  padding-right: max(var(--gutter), env(safe-area-inset-right));
+  background: var(--ink);
+  color: var(--bone);
+  font-family: var(--sans);
+  font-size: var(--fs-1);
+  line-height: 1.5;
+  font-kerning: normal;
+  font-optical-sizing: auto;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--violet);
+  color: var(--ink);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+a:focus-visible {
+  outline: 1px solid var(--violet);
+  outline-offset: 6px;
+}
+
+/* Film grain over everything, never blocking clicks */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background-image: var(--grain);
+  opacity: 0.07;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Viewfinder crop marks
+   ========================================================================== */
+
+.frame {
+  --len: 14px;
+  position: fixed;
+  inset: calc(var(--gutter) / 2);
+  pointer-events: none;
+  background:
+    linear-gradient(var(--mark), var(--mark)) top left / var(--len) 1px,
+    linear-gradient(var(--mark), var(--mark)) top left / 1px var(--len),
+    linear-gradient(var(--mark), var(--mark)) top right / var(--len) 1px,
+    linear-gradient(var(--mark), var(--mark)) top right / 1px var(--len),
+    linear-gradient(var(--mark), var(--mark)) bottom left / var(--len) 1px,
+    linear-gradient(var(--mark), var(--mark)) bottom left / 1px var(--len),
+    linear-gradient(var(--mark), var(--mark)) bottom right / var(--len) 1px,
+    linear-gradient(var(--mark), var(--mark)) bottom right / 1px var(--len);
+  background-repeat: no-repeat;
+}
+
+/* ==========================================================================
+   Top & bottom bars (mono metadata, like a viewer overlay)
+   ========================================================================== */
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  font-family: var(--mono);
+  font-size: var(--fs-0);
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ash);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar b {
+  font-weight: 400;
+  color: var(--bone);
+}
+
+.bar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--bone);
+}
+
+.swatch {
+  width: 7px;
+  height: 7px;
+  background: var(--violet);
+}
+
+.bar__meta {
+  display: inline-flex;
+  gap: 1.5rem;
+}
+
+.timeline {
+  --progress: 0;
+  position: relative;
+  flex: 1;
+  max-width: 28rem;
+  height: 9px;
+  /* 60 minor ticks (one per second) and major ticks every 10 seconds */
+  background:
+    repeating-linear-gradient(to right, var(--ash) 0 1px, transparent 1px calc(100% / 6)) bottom / 100% 9px,
+    repeating-linear-gradient(to right, var(--rule) 0 1px, transparent 1px calc(100% / 60)) bottom / 100% 4px;
+  background-repeat: no-repeat;
+  border-right: 1px solid var(--ash);
+}
+
+.timeline__playhead {
+  position: absolute;
+  top: -3px;
+  bottom: 0;
+  left: calc(var(--progress) * 100%);
+  width: 1px;
+  background: var(--violet);
+}
+
+.timeline__playhead::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -3px;
+  border: 3.5px solid transparent;
+  border-top: 4px solid var(--violet);
+  border-bottom: 0;
+}
+
+/* ==========================================================================
+   Stage: index top-right, title bottom-left, lede bottom-right
+   ========================================================================== */
+
+.stage {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: auto 1fr;
+  column-gap: var(--gutter);
+  row-gap: 3rem;
+}
+
+.index {
+  grid-column: 8 / -1;
+  grid-row: 1;
+}
+
+.title {
+  grid-column: 1 / 8;
+  grid-row: 2;
+  align-self: end;
+}
+
+.lede {
+  grid-column: 9 / -1;
+  grid-row: 2;
+  align-self: end;
+  /* Sit on the title's baseline rather than the bottom of its line box */
+  margin-bottom: 0.5rem;
+}
+
+/* ==========================================================================
+   Title
+   ========================================================================== */
+
+.title {
+  font-family: var(--serif);
+  font-weight: 400;
+  color: var(--bone);
+}
+
+.title__pre {
+  display: block;
+  font-size: clamp(var(--fs-4), 6vw, var(--fs-6));
+  line-height: 1;
+  letter-spacing: -0.01em;
+  /* Optical alignment: pull the V's overhang back to the grid line */
+  margin-left: -0.04em;
+}
+
+.title__pre em {
+  font-style: italic;
+  color: var(--violet);
+}
+
+.title__main {
+  display: block;
+  font-size: var(--fs-display);
+  line-height: 0.8;
+  letter-spacing: -0.035em;
+  /* Optical alignment: the B's left sidebearing sits inside the grid line */
+  margin-left: -0.06em;
+}
+
+/* ==========================================================================
+   Lede
+   ========================================================================== */
+
+.lede {
+  font-size: var(--fs-2);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--bone);
+  text-wrap: balance;
+}
+
+.lede__label {
+  display: block;
+  margin-bottom: 0.9rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: var(--fs-0);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ash);
+}
+
+/* ==========================================================================
+   Index (social links)
+   ========================================================================== */
+
+.index__head {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: var(--fs-0);
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ash);
+}
+
+.index__list {
+  list-style: none;
+}
+
+.index__list a {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.5rem 1.25rem 1fr auto 1rem;
+  align-items: baseline;
+  column-gap: 1rem;
+  padding: 1.15rem 0 1rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+/* Violet rule that draws in from the left on hover and retracts to the right */
+.index__list a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: var(--violet);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.6s var(--ease);
+}
+
+.index__num,
+.index__handle {
+  font-family: var(--mono);
+  font-size: var(--fs-0);
+  letter-spacing: 0.04em;
+  color: var(--ash);
+  font-variant-numeric: tabular-nums;
+  transition: color var(--dur) var(--ease);
+}
+
+.index__name {
+  font-family: var(--serif);
+  font-size: clamp(var(--fs-3), 3vw, var(--fs-4));
+  line-height: 1;
+  letter-spacing: -0.01em;
+  transition:
+    color var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+
+.index__icon {
+  align-self: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--ash);
+  transition:
+    color var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+
+.index__arrow {
+  align-self: center;
+  width: 1rem;
+  height: 1rem;
+  color: var(--ash);
+  transition:
+    color var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+
+@media (hover: hover) {
+  .index__list a:hover::after {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+
+  .index__list a:hover .index__num {
+    color: var(--violet);
+  }
+
+  .index__list a:hover .index__handle {
+    color: var(--bone);
+  }
+
+  .index__list a:hover .index__icon {
+    color: var(--bone);
+    transform: translateY(-2px);
+  }
+
+  .index__list a:hover .index__name {
+    transform: translateY(-2px);
+  }
+
+  .index__list a:hover .index__arrow {
+    color: var(--violet);
+    transform: translate(2px, -2px);
+  }
+}
+
+.index__list a:focus-visible {
+  outline-offset: 4px;
+}
+
+.index__list a:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.index__list a:active .index__name {
+  color: var(--violet);
+}
+
+/* ==========================================================================
+   Load-in
+   ========================================================================== */
+
+.title__pre,
+.title__main,
+.lede,
+.index__head,
+.index__list li {
+  animation: enter 1s var(--ease) both;
+}
+
+.index__head { animation-delay: 0.1s; }
+.index__list li:nth-child(1) { animation-delay: 0.16s; }
+.index__list li:nth-child(2) { animation-delay: 0.22s; }
+.index__list li:nth-child(3) { animation-delay: 0.28s; }
+.title__pre { animation-delay: 0.3s; }
+.title__main { animation-delay: 0.38s; }
+.lede { animation-delay: 0.5s; }
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.35rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ==========================================================================
+   Small screens: stack title, lede, then index
+   ========================================================================== */
+
+@media (max-width: 860px) {
+  .stage {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 2.5rem;
+  }
+
+  .title,
+  .lede {
+    align-self: stretch;
+  }
+
+  .title { order: 1; }
+  .lede { order: 2; margin-bottom: 0; }
+  .index { order: 3; }
+
+  :root {
+    --fs-display: clamp(5.5rem, 34vw, 13rem);
+  }
+}
+
+@media (max-width: 480px) {
+  .bar__fps {
+    display: none;
+  }
+
+  .index__list a {
+    grid-template-columns: 2rem 1.25rem 1fr auto;
+  }
+
+  .index__handle {
+    display: none;
+  }
+}
+
+/* Reduced motion: skip the entrance and anything that moves, but keep the
+   color fades so hovers still ease in rather than snapping */
+@media (prefers-reduced-motion: reduce) {
+  .title__pre,
+  .title__main,
+  .lede,
+  .index__head,
+  .index__list li {
+    animation: none;
+  }
+
+  .index__list a:hover .index__icon,
+  .index__list a:hover .index__name,
+  .index__list a:hover .index__arrow {
+    transform: none;
+  }
+
+  /* The violet rule fades in place instead of drawing across */
+  .index__list a::after {
+    transform: none;
+    opacity: 0;
+    transition: opacity var(--dur) var(--ease);
+  }
+
+  .index__list a:hover::after,
+  .index__list a:focus-visible::after {
+    transform: none;
+    opacity: 1;
+  }
+}
